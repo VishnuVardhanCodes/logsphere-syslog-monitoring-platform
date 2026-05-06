@@ -59,11 +59,32 @@ export default function Dashboard() {
   useEffect(() => {
     fetchAll()
     const interval = setInterval(fetchAll, 30000)
-    socket.on('new_log', (log) => {
+    
+    const onNewLog = (log) => {
       setRecentLogs(prev => [log, ...prev].slice(0, 20))
-      setOverview(prev => prev ? { ...prev, total_logs: prev.total_logs + 1 } : prev)
-    })
-    return () => { clearInterval(interval); socket.off('new_log') }
+      setOverview(prev => {
+        if (!prev) return prev;
+        return { 
+          ...prev, 
+          total_logs: prev.total_logs + 1,
+          warnings: log.severity === 'Warning' ? prev.warnings + 1 : prev.warnings
+        }
+      })
+    }
+
+    const onNewAlert = (alert) => {
+      setAlerts(prev => [alert, ...prev].slice(0, 5))
+      setOverview(prev => prev ? { ...prev, critical_alerts: prev.critical_alerts + 1 } : prev)
+    }
+
+    socket.on('new_log', onNewLog)
+    socket.on('new_alert', onNewAlert)
+    
+    return () => { 
+      clearInterval(interval)
+      socket.off('new_log', onNewLog)
+      socket.off('new_alert', onNewAlert)
+    }
   }, [])
 
   const statCards = overview ? [

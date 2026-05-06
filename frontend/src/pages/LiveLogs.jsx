@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, Fragment } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Filter, Download, RefreshCw, ChevronLeft, ChevronRight, ChevronDown, Wifi } from 'lucide-react'
 import API from '../lib/api'
@@ -42,10 +42,16 @@ export default function LiveLogs() {
 
   useEffect(() => {
     if (!live) return
-    const handler = (log) => setLogs(prev => [log, ...prev].slice(0, 50))
+    const handler = (log) => {
+      // Only add to list if no filters are active (or if we want to be precise, we should check filters against the log)
+      if (!filters.severity && !filters.ip && !filters.hostname && !filters.search) {
+        setLogs(prev => [log, ...prev].slice(0, 50))
+        setTotal(prev => prev + 1)
+      }
+    }
     socket.on('new_log', handler)
     return () => socket.off('new_log', handler)
-  }, [live])
+  }, [live, filters])
 
   const exportCSV = async () => {
     try {
@@ -130,7 +136,7 @@ export default function LiveLogs() {
               {loading
                 ? Array(10).fill(0).map((_, i) => <SkeletonRow key={i} cols={8} />)
                 : logs.map((log, i) => (
-                    <>
+                    <React.Fragment key={log.id}>
                       <motion.tr
                         key={log.id}
                         initial={{ opacity: 0, y: -4 }}
@@ -170,7 +176,7 @@ export default function LiveLogs() {
                           </motion.tr>
                         )}
                       </AnimatePresence>
-                    </>
+                    </React.Fragment>
                   ))
               }
               {!loading && !logs.length && (

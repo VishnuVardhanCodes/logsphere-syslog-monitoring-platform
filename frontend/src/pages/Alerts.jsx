@@ -6,6 +6,7 @@ import SeverityBadge from '../components/SeverityBadge'
 import { SkeletonRow } from '../components/Skeleton'
 import { fmtDate } from '../lib/utils'
 import toast from 'react-hot-toast'
+import socket from '../lib/socket'
 
 export default function Alerts() {
   const [alerts, setAlerts] = useState([])
@@ -28,7 +29,17 @@ export default function Alerts() {
     finally { setLoading(false) }
   }, [page, statusFilter])
 
-  useEffect(() => { fetchAlerts() }, [fetchAlerts])
+  useEffect(() => { 
+    fetchAlerts() 
+    const handleNewAlert = (alert) => {
+      if (statusFilter === '' || statusFilter === alert.status) {
+        setAlerts(prev => [alert, ...prev].slice(0, 25))
+        setTotal(prev => prev + 1)
+      }
+    }
+    socket.on('new_alert', handleNewAlert)
+    return () => socket.off('new_alert', handleNewAlert)
+  }, [fetchAlerts, statusFilter])
 
   const resolve = async (id) => {
     try {

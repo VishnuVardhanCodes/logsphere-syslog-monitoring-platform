@@ -11,7 +11,7 @@ from datetime import datetime
 
 # Target
 HOST = '127.0.0.1'
-PORT = 5140  # Use 514 in production (requires root)
+PORT = 5514  # Use 514 in production (requires root)
 
 # Sample data pools
 HOSTNAMES = [
@@ -67,7 +67,7 @@ def generate_log():
     print(f"[SENT] PRI={pri} SEV={severity} HOST={hostname} MSG={message}")
 
 if __name__ == '__main__':
-    print(f"[INFO] Syslog generator running → {HOST}:{PORT}")
+    print(f"[INFO] Syslog generator running -> {HOST}:{PORT}")
     print("[INFO] Press Ctrl+C to stop\n")
     try:
         while True:

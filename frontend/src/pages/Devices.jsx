@@ -4,6 +4,7 @@ import { Monitor, Wifi, WifiOff, RefreshCw } from 'lucide-react'
 import API from '../lib/api'
 import { fmtDate } from '../lib/utils'
 import toast from 'react-hot-toast'
+import socket from '../lib/socket'
 
 function DeviceCard({ device, index }) {
   const online = device.status === 'online'
@@ -53,7 +54,43 @@ export default function Devices() {
   useEffect(() => {
     fetchData()
     const t = setInterval(fetchData, 30000)
-    return () => clearInterval(t)
+
+    const handleNewLog = (log) => {
+      setData(prev => {
+        let exists = false;
+        const newDevices = prev.devices.map(d => {
+          if (d.ip_address === log.ip_address) {
+            exists = true;
+            return { ...d, log_count: d.log_count + 1, last_seen: log.timestamp, status: 'online' };
+          }
+          return d;
+        });
+
+        if (!exists) {
+          newDevices.unshift({
+            ip_address: log.ip_address,
+            hostname: log.hostname,
+            device_type: log.device_type,
+            log_count: 1,
+            last_seen: log.timestamp,
+            status: 'online'
+          });
+        }
+
+        return {
+          ...prev,
+          devices: newDevices,
+          total: !exists ? prev.total + 1 : prev.total,
+          online: prev.devices.filter(d => d.status === 'online').length + (!exists ? 1 : 0) // rough approx
+        };
+      });
+    }
+
+    socket.on('new_log', handleNewLog)
+    return () => {
+      clearInterval(t)
+      socket.off('new_log', handleNewLog)
+    }
   }, [])
 
   const filtered = data.devices.filter(d =>
