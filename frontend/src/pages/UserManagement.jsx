@@ -158,9 +158,9 @@ export default function UserManagement() {
           ))}
           <div>
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Role</label>
-            <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))} className={inputClass}>
-              <option value="Admin">Admin</option>
-              <option value="Super Admin">Super Admin</option>
+            <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))} className={`${inputClass} cursor-pointer`}>
+              <option value="Admin" className="bg-[#050A15] text-slate-300">Admin</option>
+              <option value="Super Admin" className="bg-[#050A15] text-slate-300">Super Admin</option>
             </select>
           </div>
           <div className="flex gap-3 pt-2">

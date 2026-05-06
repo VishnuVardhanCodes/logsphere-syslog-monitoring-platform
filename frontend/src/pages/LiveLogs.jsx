@@ -96,9 +96,9 @@ export default function LiveLogs() {
               className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-slate-300 placeholder-slate-600 focus:outline-none focus:border-blue-500/50 transition-all" />
           </div>
           <select value={filters.severity} onChange={e => setFilters(p => ({ ...p, severity: e.target.value }))}
-            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-blue-500/50 min-w-[130px]">
-            <option value="">All Severities</option>
-            {SEVERITIES.map(s => <option key={s} value={s}>{s}</option>)}
+            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-blue-500/50 min-w-[130px] cursor-pointer">
+            <option value="" className="bg-[#050A15] text-slate-300">All Severities</option>
+            {SEVERITIES.map(s => <option key={s} value={s} className="bg-[#050A15] text-slate-300">{s}</option>)}
           </select>
           <input value={filters.ip} onChange={e => setFilters(p => ({ ...p, ip: e.target.value }))}
             placeholder="Filter IP…"
