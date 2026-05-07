@@ -1,6 +1,6 @@
 <div align="center">
   <img src="https://via.placeholder.com/150/0B1120/3B82F6?text=LogSphere" alt="LogSphere Logo" width="100"/>
-  <h1>LogSphere</h1>
+  <h1>SysLog</h1>
   <p><strong>Enterprise Syslog Monitoring Platform</strong></p>
   <p>Real-time syslog intelligence for enterprise IT infrastructure. Inspired by Datadog, Grafana, and Kibana.</p>
   
