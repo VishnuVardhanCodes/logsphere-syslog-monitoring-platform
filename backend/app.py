@@ -53,6 +53,10 @@ def create_app():
     from routes.analytics import analytics_bp
     from routes.users import users_bp
     from routes.reports import reports_bp
+    from routes.settings import settings_bp
+    from routes.anomalies import anomalies_bp
+    from routes.notifications import notifications_bp
+    from routes.search import search_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(logs_bp, url_prefix='/api/logs')
@@ -61,6 +65,14 @@ def create_app():
     app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
     app.register_blueprint(users_bp, url_prefix='/api/users')
     app.register_blueprint(reports_bp, url_prefix='/api/reports')
+    app.register_blueprint(settings_bp, url_prefix='/api/settings')
+    app.register_blueprint(anomalies_bp, url_prefix='/api/anomalies')
+    app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
+    app.register_blueprint(search_bp, url_prefix='/api/search')
+
+    @app.route('/health')
+    def health_check():
+        return {"status": "ok"}, 200
 
     # ── Create Tables ────────────────────────────────────────────────────────
     with app.app_context():

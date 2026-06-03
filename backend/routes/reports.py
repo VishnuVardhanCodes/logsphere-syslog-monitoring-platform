@@ -60,6 +60,50 @@ def export_alerts_csv():
     )
 
 
+import json
+@reports_bp.route('/export/json', methods=['GET'])
+@jwt_required()
+def export_json():
+    limit = int(request.args.get('limit', 1000))
+    logs = Log.query.order_by(desc(Log.timestamp)).limit(limit).all()
+    output = io.StringIO()
+    json.dump([l.to_dict() for l in logs], output)
+    output.seek(0)
+    return send_file(
+        io.BytesIO(output.getvalue().encode()),
+        mimetype='application/json',
+        as_attachment=True,
+        download_name='logsphere_export.json'
+    )
+
+
+@reports_bp.route('/export/pdf', methods=['GET'])
+@jwt_required()
+def export_pdf():
+    try:
+        from fpdf import FPDF
+    except ImportError:
+        return jsonify({"error": "PDF generation library not installed"}), 500
+
+    logs = Log.query.order_by(desc(Log.timestamp)).limit(100).all()
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt="LogSphere Security Report", ln=1, align="C")
+    pdf.set_font("Arial", size=10)
+    for log in logs:
+        text = f"{log.timestamp.strftime('%Y-%m-%d %H:%M:%S')} | {log.severity} | {log.hostname} | {log.message[:80]}"
+        pdf.cell(200, 10, txt=text, ln=1)
+    
+    pdf_bytes = pdf.output(dest='S').encode('latin1')
+    return send_file(
+        io.BytesIO(pdf_bytes),
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name='logsphere_report.pdf'
+    )
+
+
 @reports_bp.route('/summary', methods=['GET'])
 @jwt_required()
 def report_summary():

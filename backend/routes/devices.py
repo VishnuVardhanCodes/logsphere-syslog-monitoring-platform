@@ -71,3 +71,50 @@ def device_logs(ip_address):
         .all()
     )
     return jsonify([l.to_dict() for l in logs]), 200
+
+@devices_bp.route('/health/<hostname>', methods=['GET'])
+@jwt_required()
+def device_health(hostname):
+    """Get device health metrics and recent logs."""
+    from sqlalchemy import func
+    
+    logs = Log.query.filter_by(hostname=hostname).order_by(desc(Log.timestamp)).limit(10).all()
+    
+    warning_count = Log.query.filter_by(hostname=hostname, severity='Warning').count()
+    critical_count = Log.query.filter(Log.hostname == hostname, Log.severity.in_(['Critical', 'Emergency', 'Alert'])).count()
+    total_count = Log.query.filter_by(hostname=hostname).count()
+    
+    # Simple mock health score based on warnings and criticals
+    score = 100 - (warning_count * 2) - (critical_count * 10)
+    score = max(0, min(100, score))
+    
+    return jsonify({
+        "hostname": hostname,
+        "health_score": score,
+        "warning_count": warning_count,
+        "critical_count": critical_count,
+        "total_logs": total_count,
+        "recent_logs": [l.to_dict() for l in logs]
+    }), 200
+
+@devices_bp.route('/<hostname>/detail', methods=['GET'])
+@jwt_required()
+def device_detail(hostname):
+    """Get full device profile including alerts and logs."""
+    from models import Alert
+    
+    log = Log.query.filter_by(hostname=hostname).order_by(desc(Log.timestamp)).first()
+    if not log:
+        return jsonify({"error": "Device not found"}), 404
+        
+    recent_logs = Log.query.filter_by(hostname=hostname).order_by(desc(Log.timestamp)).limit(20).all()
+    alerts = Alert.query.filter(Alert.message.like(f'%[{hostname}]%')).order_by(desc(Alert.created_at)).limit(10).all()
+    
+    return jsonify({
+        "hostname": hostname,
+        "ip_address": log.ip_address,
+        "device_type": log.device_type,
+        "last_seen": log.timestamp.isoformat(),
+        "recent_logs": [l.to_dict() for l in recent_logs],
+        "alerts": [a.to_dict() for a in alerts]
+    }), 200

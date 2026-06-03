@@ -50,6 +50,8 @@ class Alert(db.Model):
     severity = db.Column(db.String(20))
     message = db.Column(db.Text)
     status = db.Column(db.String(20), default='active')
+    escalated_to = db.Column(db.String(50))
+    assigned_to = db.Column(db.String(50))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
@@ -58,5 +60,61 @@ class Alert(db.Model):
             "severity": self.severity,
             "message": self.message,
             "status": self.status,
+            "escalated_to": self.escalated_to,
+            "assigned_to": self.assigned_to,
             "created_at": self.created_at.isoformat()
+        }
+
+class Anomaly(db.Model):
+    __tablename__ = 'anomalies'
+    id = db.Column(db.Integer, primary_key=True)
+    hostname = db.Column(db.String(100))
+    severity = db.Column(db.String(20))
+    category = db.Column(db.String(50))
+    description = db.Column(db.Text)
+    notes = db.Column(db.Text)
+    status = db.Column(db.String(20), default='open')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "hostname": self.hostname,
+            "severity": self.severity,
+            "category": self.category,
+            "description": self.description,
+            "notes": self.notes,
+            "status": self.status,
+            "created_at": self.created_at.isoformat()
+        }
+
+class Notification(db.Model):
+    __tablename__ = 'notifications'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    message = db.Column(db.Text)
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "message": self.message,
+            "is_read": self.is_read,
+            "created_at": self.created_at.isoformat()
+        }
+
+class Setting(db.Model):
+    __tablename__ = 'settings'
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(50), unique=True, nullable=False)
+    value = db.Column(db.Text)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "key": self.key,
+            "value": self.value,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }

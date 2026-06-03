@@ -11,6 +11,7 @@ import Analytics from './pages/Analytics'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import UserManagement from './pages/UserManagement'
+import Anomalies from './pages/Anomalies'
 
 /** Guard: redirect to /login if not authenticated */
 function PrivateRoute({ children }) {
@@ -38,6 +39,7 @@ function AppRoutes() {
         <Route path="dashboard"   element={<Dashboard />} />
         <Route path="live-logs"   element={<LiveLogs />} />
         <Route path="alerts"      element={<Alerts />} />
+        <Route path="anomalies"   element={<Anomalies />} />
         <Route path="devices"     element={<Devices />} />
         <Route path="analytics"   element={<Analytics />} />
         <Route path="reports"     element={<Reports />} />

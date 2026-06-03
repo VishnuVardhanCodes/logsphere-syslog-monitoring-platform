@@ -1,24 +1,33 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   AreaChart, Area, PieChart, Pie, Cell,
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  LineChart, Line
 } from 'recharts'
-import { Database, Monitor, AlertTriangle, AlertOctagon, Activity } from 'lucide-react'
+import { 
+  Database, Monitor, AlertTriangle, AlertOctagon, Activity, 
+  Cpu, Server, Globe, ShieldAlert, ArrowUpRight, ArrowDownRight,
+  RefreshCw, Clock, Filter
+} from 'lucide-react'
 import API from '../lib/api'
 import socket from '../lib/socket'
 import StatCard from '../components/StatCard'
 import SeverityBadge from '../components/SeverityBadge'
 import { SkeletonCard } from '../components/Skeleton'
 import { fmtDate, severityColor } from '../lib/utils'
+import AnalyticsModal from '../components/Modals/AnalyticsModal'
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
   return (
-    <div className="glass-strong rounded-lg px-3 py-2 text-xs border border-blue-500/20">
-      <p className="text-slate-400 mb-1">{label}</p>
+    <div className="bg-[#0F172A]/90 backdrop-blur-xl border border-white/10 p-3 rounded-xl shadow-2xl">
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">{label}</p>
       {payload.map((p, i) => (
-        <p key={i} style={{ color: p.color }} className="font-semibold">{p.name}: {p.value}</p>
+        <div key={i} className="flex items-center gap-3">
+          <div className="w-2 h-2 rounded-full" style={{ background: p.color }} />
+          <p className="text-sm font-bold text-white">{p.name}: {p.value}</p>
+        </div>
       ))}
     </div>
   )
@@ -32,6 +41,8 @@ export default function Dashboard() {
   const [alerts, setAlerts] = useState([])
   const [recentLogs, setRecentLogs] = useState([])
   const [loading, setLoading] = useState(true)
+
+  const [modalData, setModalData] = useState(null)
 
   const fetchAll = async () => {
     try {
@@ -58,18 +69,15 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchAll()
-    const interval = setInterval(fetchAll, 30000)
+    const interval = setInterval(fetchAll, 5000)
     
     const onNewLog = (log) => {
-      setRecentLogs(prev => [log, ...prev].slice(0, 20))
-      setOverview(prev => {
-        if (!prev) return prev;
-        return { 
-          ...prev, 
-          total_logs: prev.total_logs + 1,
-          warnings: log.severity === 'Warning' ? prev.warnings + 1 : prev.warnings
-        }
-      })
+      setRecentLogs(prev => [log, ...prev].slice(0, 15))
+      setOverview(prev => prev ? ({ 
+        ...prev, 
+        total_logs: prev.total_logs + 1,
+        warnings: log.severity === 'Warning' ? prev.warnings + 1 : prev.warnings
+      }) : prev)
     }
 
     const onNewAlert = (alert) => {
@@ -88,186 +96,252 @@ export default function Dashboard() {
   }, [])
 
   const statCards = overview ? [
-    { title: 'Total Logs',      value: overview.total_logs,      icon: Database,      color: 'blue',  trend: 'up',   trendValue: '+12% today', delay: 0 },
-    { title: 'Active Devices',  value: overview.active_devices,  icon: Monitor,       color: 'cyan',  trend: 'flat', trendValue: 'No change',  delay: 0.1 },
-    { title: 'Critical Alerts', value: overview.critical_alerts, icon: AlertOctagon,  color: 'red',   trend: 'down', trendValue: '-3 resolved',delay: 0.2 },
-    { title: 'Warnings',        value: overview.warnings,        icon: AlertTriangle, color: 'amber', trend: 'up',   trendValue: '+5 new',     delay: 0.3 },
+    { title: 'Total Ingested Logs', value: overview.total_logs, icon: Database, color: 'blue', trend: 'up', trendValue: '+12.5%', delay: 0 },
+    { title: 'Active Network Devices', value: overview.active_devices, icon: Server, color: 'cyan', trend: 'up', trendValue: '+2', delay: 0.1 },
+    { title: 'Critical Alert Events', value: overview.critical_alerts, icon: ShieldAlert, color: 'red', trend: 'down', trendValue: '-5.2%', delay: 0.2 },
+    { title: 'Security Warnings', value: overview.warnings, icon: AlertTriangle, color: 'amber', trend: 'up', trendValue: '+3', delay: 0.3 },
   ] : []
 
   return (
-    <div className="space-y-8 animate-fade-in pb-12">
-      <div className="flex items-center justify-between">
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }}>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">Dashboard</h1>
-          <p className="text-slate-400 text-sm mt-1">Real-time network & syslog intelligence</p>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }} className="flex items-center gap-2 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-          <Activity size={14} className="animate-pulse" />
-          Live monitoring active
-        </motion.div>
+    <div className="pb-10 space-y-8 animate-fade-in">
+      {/* Header Section */}
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-[0.2em]">Live Intelligence Active</span>
+          </div>
+          <h1 className="text-4xl font-black text-white tracking-tight">Security Command Center</h1>
+          <p className="text-slate-500 text-sm mt-1">Global infrastructure monitoring and real-time telemetry analysis.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button onClick={fetchAll} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 transition-all text-xs font-bold">
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            Refresh
+          </button>
+          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold shadow-[0_0_15px_rgba(59,130,246,0.15)]">
+            <Clock size={14} />
+            Auto-sync: 5s
+          </div>
+        </div>
+      </header>
+
+      {/* Primary Statistics Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {loading ? Array(4).fill(0).map((_, i) => <SkeletonCard key={i} />) : statCards.map(c => <StatCard key={c.title} {...c} />)}
       </div>
 
-      {/* Stat cards */}
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ staggerChildren: 0.1 }}
-        className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6"
-      >
-        {loading ? Array(4).fill(0).map((_, i) => <SkeletonCard key={i} />) : statCards.map(c => <StatCard key={c.title} {...c} />)}
-      </motion.div>
-
-      {/* Row 1: area + pie */}
+      {/* Main Analysis Section */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }} className="xl:col-span-2 glass-strong gradient-border p-6 rounded-2xl relative group overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <div className="relative z-10 flex justify-between mb-6">
-            <h3 className="font-bold text-white text-base tracking-wide">Logs per Hour</h3>
-            <span className="text-xs font-medium px-3 py-1 rounded-full bg-white/5 text-slate-400 border border-white/10">Last 24h</span>
+        
+        {/* Logs Timeline */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="xl:col-span-2 glass-strong border border-white/5 rounded-3xl p-6 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+            <Activity size={120} className="text-blue-500" />
           </div>
-          <ResponsiveContainer width="100%" height={240}>
-            <AreaChart data={hourly} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="lgBlue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#3B82F6" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="hour" tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }} axisLine={false} tickLine={false} dy={10} />
-              <YAxis tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }} axisLine={false} tickLine={false} dx={-10} />
-              <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(59,130,246,0.2)', strokeWidth: 2, strokeDasharray: '4 4' }} />
-              <Area type="monotone" dataKey="count" stroke="#3B82F6" strokeWidth={3} fill="url(#lgBlue)" name="Logs" dot={{ r: 0 }} activeDot={{ r: 6, fill: '#3B82F6', stroke: '#fff', strokeWidth: 2 }} />
-            </AreaChart>
-          </ResponsiveContainer>
+          <div className="relative z-10 flex items-center justify-between mb-8">
+            <div>
+              <h3 className="text-lg font-bold text-white tracking-tight">Ingestion Throughput</h3>
+              <p className="text-xs text-slate-500">Log entries processed per hour across all nodes</p>
+            </div>
+            <div className="flex items-center gap-2 bg-[#0B1120] p-1 rounded-xl border border-white/5">
+              {['24h', '7d', '30d'].map(t => (
+                <button key={t} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${t === '24h' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>{t}</button>
+              ))}
+            </div>
+          </div>
+          <div className="h-[300px] cursor-pointer" onClick={() => setModalData({ title: 'Ingestion Throughput', data: hourly, columns: ['hour', 'count'] })}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={hourly} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#3B82F6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="hour" axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 10, fontWeight: 700 }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 10, fontWeight: 700 }} dx={-10} />
+                <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#3B82F6', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                <Area type="monotone" dataKey="count" stroke="#3B82F6" strokeWidth={3} fill="url(#areaGrad)" name="Logs" animationDuration={2000} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.5 }} className="glass-strong gradient-border p-6 rounded-2xl relative group overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <h3 className="relative z-10 font-bold text-white text-base tracking-wide mb-6">Severity Distribution</h3>
-          <ResponsiveContainer width="100%" height={180}>
-            <PieChart>
-              <Pie data={severity} dataKey="count" nameKey="severity" cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4}>
-                {severity.map((e, i) => <Cell key={i} fill={severityColor(e.severity)} className="drop-shadow-lg" />)}
-              </Pie>
-              <Tooltip contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, fontSize: 12, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)' }} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="relative z-10 space-y-2.5 mt-4">
-            {severity.slice(0, 5).map((s, i) => (
-              <div key={i} className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-3">
-                  <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ background: severityColor(s.severity), boxShadow: `0 0 10px ${severityColor(s.severity)}80` }} />
-                  <span className="text-slate-400 font-medium capitalize">{s.severity}</span>
+        {/* Severity Intelligence */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="glass-strong border border-white/5 rounded-3xl p-6 flex flex-col">
+          <h3 className="text-lg font-bold text-white tracking-tight mb-1">Threat Vectors</h3>
+          <p className="text-xs text-slate-500 mb-8">Severity distribution analytics</p>
+          
+          <div className="flex-1 min-h-[240px] cursor-pointer" onClick={() => setModalData({ title: 'Severity Distribution', data: severity, columns: ['severity', 'count'] })}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={severity} dataKey="count" nameKey="severity" cx="50%" cy="50%" innerRadius={70} outerRadius={90} paddingAngle={8} stroke="none">
+                  {severity.map((e, i) => <Cell key={i} fill={severityColor(e.severity)} className="outline-none" />)}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mt-6">
+            {severity.map((s, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.05]">
+                <div className="w-2 h-2 rounded-full shadow-[0_0_8px_currentColor]" style={{ background: severityColor(s.severity), color: severityColor(s.severity) }} />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase truncate leading-none mb-1">{s.severity}</p>
+                  <p className="text-sm font-black text-white">{s.count}</p>
                 </div>
-                <span className="text-white font-bold">{s.count}</span>
               </div>
             ))}
           </div>
         </motion.div>
       </div>
 
-      {/* Row 2: bar + recent alerts */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.5 }} className="glass-strong gradient-border p-6 rounded-2xl relative group overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <h3 className="relative z-10 font-bold text-white text-base tracking-wide mb-6">Top Device Activity</h3>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={devices} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
-              <XAxis type="number" tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }} axisLine={false} tickLine={false} />
-              <YAxis dataKey="hostname" type="category" tick={{ fill: '#94A3B8', fontSize: 11, fontWeight: 500 }} axisLine={false} tickLine={false} width={100} />
-              <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} content={<CustomTooltip />} />
-              <Bar dataKey="count" fill="#3B82F6" radius={[0, 6, 6, 0]} name="Logs" maxBarSize={30}>
-                {devices.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={`url(#colorPv${index})`} />
-                ))}
-              </Bar>
-              <defs>
-                {devices.map((entry, index) => (
-                  <linearGradient key={`colorPv${index}`} id={`colorPv${index}`} x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.8}/>
-                    <stop offset="100%" stopColor="#06B6D4" stopOpacity={1}/>
-                  </linearGradient>
-                ))}
-              </defs>
-            </BarChart>
-          </ResponsiveContainer>
+      {/* Secondary Analysis Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Device Health Feed */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="glass-strong border border-white/5 rounded-3xl p-6">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-lg font-bold text-white tracking-tight">Infrastructure Pulse</h3>
+            <span className="text-[10px] font-bold text-blue-400 bg-blue-400/10 px-3 py-1 rounded-full uppercase">Top Assets</span>
+          </div>
+          <div className="h-[280px] cursor-pointer" onClick={() => setModalData({ title: 'Infrastructure Pulse', data: devices, columns: ['hostname', 'count'] })}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={devices} layout="vertical" margin={{ left: 20 }}>
+                <XAxis type="number" hide />
+                <YAxis dataKey="hostname" type="category" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 11, fontWeight: 600 }} width={100} />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.02)' }} />
+                <Bar dataKey="count" radius={[0, 8, 8, 0]} barSize={24}>
+                  {devices.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={index === 0 ? '#3B82F6' : index === 1 ? '#06B6D4' : '#1E293B'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45, duration: 0.5 }} className="glass-strong gradient-border p-6 rounded-2xl relative group overflow-hidden flex flex-col h-full">
-          <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <h3 className="relative z-10 font-bold text-white text-base tracking-wide mb-4">Recent Alerts</h3>
-          <div className="flex-1 relative z-10">
-            {!alerts?.length
-              ? <div className="h-full flex items-center justify-center text-slate-500 text-sm italic py-8">No active alerts currently.</div>
-              : <div className="space-y-3">
-                  {alerts.map((a, i) => (
-                    <motion.div 
-                      initial={{ opacity: 0, x: 20 }} 
-                      animate={{ opacity: 1, x: 0 }} 
-                      transition={{ delay: 0.5 + (i * 0.1) }}
-                      key={a.id} 
-                      className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.05] transition-all duration-300 hover:scale-[1.02] cursor-pointer"
-                    >
+        {/* Live Alerts Stream */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }} className="glass-strong border border-white/5 rounded-3xl p-6 flex flex-col h-full">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-bold text-white tracking-tight">Active Critical Alerts</h3>
+            <div className="flex items-center gap-1.5 text-[10px] font-bold text-red-400 bg-red-400/10 px-3 py-1 rounded-full animate-pulse uppercase">
+              <ShieldAlert size={12} /> Live Feed
+            </div>
+          </div>
+          <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-2">
+            {!alerts?.length ? (
+              <div className="h-full flex flex-col items-center justify-center text-slate-600 gap-3">
+                <RefreshCw size={24} className="opacity-20" />
+                <p className="text-xs font-bold uppercase tracking-widest italic">No critical events detected</p>
+              </div>
+            ) : (
+              alerts.map((a, i) => (
+                <motion.div 
+                  key={a.id}
+                  initial={{ opacity: 0, x: 20 }} 
+                  animate={{ opacity: 1, x: 0 }} 
+                  transition={{ delay: 0.8 + (i * 0.1) }}
+                  className="group flex items-start gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.03] hover:border-red-500/20 hover:bg-red-500/5 transition-all cursor-pointer"
+                >
+                  <div className={`p-2.5 rounded-xl ${a.severity === 'Critical' ? 'bg-red-500/10 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'bg-amber-500/10 text-amber-500'}`}>
+                    <AlertOctagon size={18} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-sm font-bold text-white group-hover:text-red-400 transition-colors truncate">{a.message}</p>
+                      <span className="text-[10px] font-bold text-slate-600 whitespace-nowrap">{fmtDate(a.created_at)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{a.hostname || 'Global System'}</span>
+                      <div className="w-1 h-1 rounded-full bg-slate-700" />
                       <SeverityBadge severity={a.severity} />
-                      <div className="flex-1 min-w-0 pt-0.5">
-                        <p className="text-sm text-slate-200 truncate font-medium">{a.message}</p>
-                        <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
-                          <Activity size={10} className="text-slate-600" />
-                          {fmtDate(a.created_at)}
-                        </p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-            }
+                    </div>
+                  </div>
+                </motion.div>
+              ))
+            )}
           </div>
         </motion.div>
       </div>
 
-      {/* Live feed */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.5 }} className="glass-strong gradient-border rounded-2xl overflow-hidden shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)]">
-        <div className="flex items-center justify-between p-6 border-b border-white/5 bg-white/[0.01]">
+      {/* Real-time Ingestion Feed */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }} className="glass-strong border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
+        <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.01]">
           <div className="flex items-center gap-3">
-            <h3 className="font-bold text-white text-base tracking-wide">Live Log Feed</h3>
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-              <span className="pulse-dot" style={{ width: 6, height: 6 }} /> Live Stream
-            </span>
+            <h3 className="text-lg font-black text-white tracking-tight uppercase">Global Telemetry Stream</h3>
+            <div className="flex items-center gap-2 bg-emerald-500/10 px-3 py-1 rounded-full">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Real-time</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-slate-500">
+              <Filter size={14} />
+              <span className="text-[10px] font-bold uppercase">All severities</span>
+            </div>
+            <div className="h-4 w-[1px] bg-white/5" />
+            <button className="text-[10px] font-bold text-blue-400 uppercase tracking-widest hover:text-blue-300 transition-colors">View All Logs</button>
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full data-table">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr>
-                <th className="text-left w-32">Time</th>
-                <th className="text-left w-32">Hostname</th>
-                <th className="text-left w-32">IP</th>
-                <th className="text-left w-24">Severity</th>
-                <th className="text-left">Message</th>
+              <tr className="bg-white/[0.01]">
+                <th className="px-8 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Timestamp</th>
+                <th className="px-8 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Hostname</th>
+                <th className="px-8 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Source IP</th>
+                <th className="px-8 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Severity</th>
+                <th className="px-8 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Payload Message</th>
               </tr>
             </thead>
-            <tbody>
-              <AnimatePresence initial={false}>
+            <tbody className="divide-y divide-white/[0.02]">
+              <AnimatePresence mode="popLayout">
                 {recentLogs.map((log, i) => (
                   <motion.tr 
-                    key={log.id || `${log.timestamp}-${i}`} 
-                    initial={{ opacity: 0, backgroundColor: 'rgba(59, 130, 246, 0.2)' }} 
-                    animate={{ opacity: 1, backgroundColor: 'transparent' }} 
-                    transition={{ duration: 0.5 }}
-                    className="hover:bg-white/[0.04] transition-colors duration-200"
+                    key={log.id || i}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="hover:bg-white/[0.03] group transition-all"
                   >
-                    <td className="whitespace-nowrap text-xs text-slate-500 font-medium">{fmtDate(log.timestamp)}</td>
-                    <td className="font-mono text-xs text-cyan-400">{log.hostname}</td>
-                    <td className="font-mono text-xs text-slate-400">{log.ip_address}</td>
-                    <td><SeverityBadge severity={log.severity} /></td>
-                    <td className="text-slate-300 text-sm font-medium">{log.message}</td>
+                    <td className="px-8 py-4 whitespace-nowrap text-xs font-mono text-slate-500">{fmtDate(log.timestamp)}</td>
+                    <td className="px-8 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <Server size={12} className="text-blue-500 opacity-40" />
+                        <span className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors">{log.hostname}</span>
+                      </div>
+                    </td>
+                    <td className="px-8 py-4 whitespace-nowrap text-xs font-mono text-slate-400 opacity-60">{log.ip_address}</td>
+                    <td className="px-8 py-4 whitespace-nowrap"><SeverityBadge severity={log.severity} /></td>
+                    <td className="px-8 py-4 text-sm font-medium text-slate-300 max-w-[400px] truncate">{log.message}</td>
                   </motion.tr>
                 ))}
               </AnimatePresence>
-              {!recentLogs.length && <tr><td colSpan={5} className="text-center py-12 text-slate-500 text-sm italic bg-white/[0.01]">Waiting for initial telemetry data…</td></tr>}
+              {!recentLogs.length && (
+                <tr>
+                  <td colSpan={5} className="py-20 text-center">
+                    <div className="flex flex-col items-center gap-3 opacity-20">
+                      <RefreshCw size={40} className="animate-spin text-blue-500" />
+                      <p className="text-xs font-bold uppercase tracking-[0.3em] text-white">Listening for telemetry...</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       </motion.div>
+
+      <AnalyticsModal 
+        isOpen={!!modalData} 
+        onClose={() => setModalData(null)} 
+        title={modalData?.title} 
+        data={modalData?.data} 
+        columns={modalData?.columns} 
+      />
     </div>
   )
 }
