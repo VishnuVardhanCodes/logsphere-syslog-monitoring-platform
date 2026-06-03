@@ -53,17 +53,31 @@ def severity_distribution():
 @analytics_bp.route('/logs-per-hour', methods=['GET'])
 @jwt_required()
 def logs_per_hour():
-    """Area chart data: logs count per hour for the last 24h."""
-    rows = db.session.execute(text(
-        """
-        SELECT DATE_FORMAT(timestamp, '%H:00') AS hour,
-               COUNT(*) AS count
+    """Area chart data: logs count based on time range (24h, 7d, 30d)."""
+    from flask import request
+    time_range = request.args.get('range', '24h')
+    
+    if time_range == '7d':
+        interval_sql = "NOW() - INTERVAL 7 DAY"
+        date_format = "%b %d"
+    elif time_range == '30d':
+        interval_sql = "NOW() - INTERVAL 30 DAY"
+        date_format = "%b %d"
+    else:
+        interval_sql = "NOW() - INTERVAL 24 HOUR"
+        date_format = "%H:00"
+
+    query = text(f"""
+        SELECT DATE_FORMAT(timestamp, '{date_format}') AS time_label,
+               COUNT(*) AS count,
+               MIN(timestamp) as min_ts
         FROM logs
-        WHERE timestamp >= NOW() - INTERVAL 24 HOUR
-        GROUP BY hour ORDER BY hour ASC
-        """
-    )).fetchall()
-    return jsonify([{"hour": r[0], "count": r[1]} for r in rows]), 200
+        WHERE timestamp >= {interval_sql}
+        GROUP BY time_label 
+        ORDER BY min_ts ASC
+    """)
+    rows = db.session.execute(query).fetchall()
+    return jsonify([{"time": r[0], "count": r[1]} for r in rows]), 200
 
 
 @analytics_bp.route('/device-activity', methods=['GET'])

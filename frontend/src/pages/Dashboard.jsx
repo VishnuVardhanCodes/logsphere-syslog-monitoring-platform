@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   AreaChart, Area, PieChart, Pie, Cell,
@@ -43,12 +43,21 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
 
   const [modalData, setModalData] = useState(null)
+  
+  const [throughputRange, setThroughputRange] = useState('24h')
+  const rangeRef = useRef('24h')
+
+  const handleRangeChange = (range) => {
+    setThroughputRange(range)
+    rangeRef.current = range
+    API.get(`/analytics/logs-per-hour?range=${range}`).then(res => setHourly(res.data)).catch(console.error)
+  }
 
   const fetchAll = async () => {
     try {
       const [ov, hr, sv, dv, al, rl] = await Promise.all([
         API.get('/analytics/overview'),
-        API.get('/analytics/logs-per-hour'),
+        API.get(`/analytics/logs-per-hour?range=${rangeRef.current}`),
         API.get('/analytics/severity-distribution'),
         API.get('/analytics/device-activity'),
         API.get('/alerts/?per_page=5'),
@@ -146,11 +155,17 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center gap-2 bg-[#0B1120] p-1 rounded-xl border border-white/5">
               {['24h', '7d', '30d'].map(t => (
-                <button key={t} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${t === '24h' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>{t}</button>
+                <button 
+                  key={t} 
+                  onClick={() => handleRangeChange(t)}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${t === throughputRange ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  {t}
+                </button>
               ))}
             </div>
           </div>
-          <div className="h-[300px] cursor-pointer" onClick={() => setModalData({ title: 'Ingestion Throughput', data: hourly, columns: ['hour', 'count'] })}>
+          <div className="h-[300px] cursor-pointer" onClick={() => setModalData({ title: 'Ingestion Throughput', data: hourly, columns: ['time', 'count'] })}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={hourly} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
@@ -159,7 +174,7 @@ export default function Dashboard() {
                     <stop offset="100%" stopColor="#3B82F6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="hour" axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 10, fontWeight: 700 }} dy={10} />
+                <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 10, fontWeight: 700 }} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 10, fontWeight: 700 }} dx={-10} />
                 <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#3B82F6', strokeWidth: 1, strokeDasharray: '4 4' }} />
                 <Area type="monotone" dataKey="count" stroke="#3B82F6" strokeWidth={3} fill="url(#areaGrad)" name="Logs" animationDuration={2000} />
